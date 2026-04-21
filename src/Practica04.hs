@@ -27,19 +27,27 @@ s = Var "s"
 t = Var "t"
 u = Var "u"
 
+void :: Clausula
+void = []
+
 --Definicion de los tipos para la practica
 type Interpretacion = [( String , Bool ) ]
+type ParInterp = ( String , Bool )
 type Estado = ( Interpretacion , [Clausula])
 data ArbolDPLL = Node Estado ArbolDPLL | Branch Estado ArbolDPLL ArbolDPLL | Void deriving Show
 
 --IMPLEMENTACION PARTE 1
 --Ejercicio 1
 conflict :: Estado -> Bool
-conflict = undefined
+conflict e
+  | clausulaEnEstado void e = True
+  | otherwise = False
 
 --Ejercicio 2
 success :: Estado -> Bool
-success = undefined
+success (inter, clausulas)
+  | clausulas == [] = True
+  | otherwise = False
 
 --Ejercicio 3
 unit :: Estado -> Estado
@@ -52,11 +60,13 @@ unit (modelo , c:xs) = if esUnitaria c
 
 --Ejercicio 4
 elim :: Estado -> Estado
-elim = undefined
+elim ([], cs) = ([], cs)
+elim (x:xs, cs) = acumularModelo ([x], []) (elim (xs, auxiliarElim (regresarLiteral x) cs))
 
 --Ejercicio 5
 red :: Estado -> Estado
-red = undefined
+red ([], cs) = ([], cs)
+red (x:xs, cs) = acumularModelo ([x], []) (red (xs, auxiliarRed (regresarLiteral x) cs))
 
 
 --Ejercicio 6
@@ -79,9 +89,38 @@ dpll2 :: Prop -> Interpretacion
 dpll2 = undefined
 
 --Funciones auxiliares para la practica
+
+regresarLiteral :: ParInterp -> Literal
+regresarLiteral (x, True) = Var x
+regresarLiteral (x, False) = Not (Var x)
+
+auxiliarElim :: Literal -> [Clausula] -> [Clausula]
+auxiliarElim _ [] = []
+auxiliarElim l (c:cs)
+  | l `elem` c = auxiliarElim l cs
+  | otherwise = c : (auxiliarElim l cs)
+
+auxiliarRed :: Literal -> [Clausula] -> [Clausula]
+auxiliarRed _ [] = []
+auxiliarRed l (c:cs)
+  | Not l `elem` c = removerLiteral (Not l) c : (auxiliarRed l cs)
+  | otherwise = c : (auxiliarRed l cs)
+
+removerLiteral :: Literal -> Clausula -> Clausula
+removerLiteral _ [] = []
+removerLiteral l (x:xs)
+  | l == x = removerLiteral l xs
+  | otherwise = x : (removerLiteral l xs)
+
 esUnitaria :: Clausula -> Bool
 esUnitaria [x] = True
 esUnitaria xs = False
+
+clausulaEnEstado :: Clausula -> Estado -> Bool
+clausulaEnEstado c (inter, x:xs)
+  | c == x = True
+  | [] == xs = False
+  | otherwise = clausulaEnEstado c (inter, xs)
 
 obtenerNombre :: Literal -> String
 obtenerNombre (Var x) = x
@@ -104,8 +143,17 @@ darValor [Not (Var p)] = [("p", False)]
 acumularClausula :: Estado -> Estado -> Estado
 acumularClausula (_ , xs) (l2 , ys) = (l2, xs ++ ys)
 
+acumularModelo :: Estado -> Estado -> Estado
+acumularModelo (m1, _) (m2, ys) = (m1 ++ m2, ys)
+
 segundoElemto :: (a , b) -> b
 segundoElemto (_ , b) = b
+
+clausulas :: Prop -> [Clausula]
+clausulas (Var p) = [ [Var p] ]
+clausulas (Not (Var p)) = [ [Not (Var p)] ] --porque en FNC las negaciones aparecen en frente de literales
+clausulas (And p q) = (clausulas p ++ clausulas q)
+clausulas (Or p q) = [litInOr (Or p q)]
 
 --construirArbolDPLL :: Estado -> ArbolDPLL
 --construirArbolDPLL estado
