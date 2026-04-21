@@ -103,7 +103,7 @@ auxiliarElim l (c:cs)
 auxiliarRed :: Literal -> [Clausula] -> [Clausula]
 auxiliarRed _ [] = []
 auxiliarRed l (c:cs)
-  | Not l `elem` c = removerLiteral (Not l) c : (auxiliarRed l cs)
+  | negar l `elem` c = removerLiteral (negar l) c : (auxiliarRed l cs)
   | otherwise = c : (auxiliarRed l cs)
 
 removerLiteral :: Literal -> Clausula -> Clausula
@@ -111,6 +111,10 @@ removerLiteral _ [] = []
 removerLiteral l (x:xs)
   | l == x = removerLiteral l xs
   | otherwise = x : (removerLiteral l xs)
+
+negar :: Literal -> Literal
+negar (Not l) = l
+negar l = Not l
 
 esUnitaria :: Clausula -> Bool
 esUnitaria [x] = True
@@ -148,12 +152,6 @@ acumularModelo (m1, _) (m2, ys) = (m1 ++ m2, ys)
 
 segundoElemto :: (a , b) -> b
 segundoElemto (_ , b) = b
-
-clausulas :: Prop -> [Clausula]
-clausulas (Var p) = [ [Var p] ]
-clausulas (Not (Var p)) = [ [Not (Var p)] ] --porque en FNC las negaciones aparecen en frente de literales
-clausulas (And p q) = (clausulas p ++ clausulas q)
-clausulas (Or p q) = [litInOr (Or p q)]
 
 --construirArbolDPLL :: Estado -> ArbolDPLL
 --construirArbolDPLL estado
