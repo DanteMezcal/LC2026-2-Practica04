@@ -71,7 +71,11 @@ red (x:xs, cs) = acumularModelo ([x], []) (red (xs, auxiliarRed (regresarLiteral
 
 --Ejercicio 6
 sep :: Literal -> Estado -> (Estado, Estado)
-sep = undefined
+sep l ([], c:cs) = (([(obtenerNombre l, True)], c:cs), ([(obtenerNombre l, False)], c:cs))
+sep l (i:is, []) = ((i:(obtenerNombre l, True):is, []), (i:(obtenerNombre l, False):is, []))
+sep l ([], []) = (([(obtenerNombre l, True)], []), ([(obtenerNombre l, False)], []))
+  
+sep l (i:is , c:cs) = ((i:((obtenerNombre l), True):is, c:cs), (i:((obtenerNombre l), False):is, c:cs))
 
 --IMPLEMENTACION PARTE 2
 
