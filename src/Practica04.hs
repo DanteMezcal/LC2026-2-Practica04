@@ -51,12 +51,17 @@ success (inter, clausulas)
 
 --Ejercicio 3
 unit :: Estado -> Estado
-unit (modelo , []) = (modelo , [])
-unit (modelo , c:xs) = if esUnitaria c
-                          then if tieneInterpretacion (obtenerNombre (obtenerLiteral c)) modelo
-                                  then acumularClausula ([], [c]) (unit (modelo , xs))
-                                  else (modelo ++ darValor c, xs)
-                         else acumularClausula ([], [c]) (unit (modelo , xs))
+unit (modelo, []) = (modelo, [])
+unit (modelo, c:cs)
+  | esUnitaria c =
+      let l = obtenerLiteral c
+          nombre = obtenerNombre l
+      in if tieneInterpretacion nombre modelo
+            then (modelo, c:cs)
+            else (modelo ++ darValor c, cs)
+  | otherwise =
+      let (m, cs') = unit (modelo, cs)
+      in (m, c:cs')
 
 --Ejercicio 4
 elim :: Estado -> Estado
@@ -71,26 +76,71 @@ red (x:xs, cs) = acumularModelo ([x], []) (red (xs, auxiliarRed (regresarLiteral
 
 --Ejercicio 6
 sep :: Literal -> Estado -> (Estado, Estado)
-sep l ([], c:cs) = (([(obtenerNombre l, True)], c:cs), ([(obtenerNombre l, False)], c:cs))
-sep l (i:is, []) = ((i:(obtenerNombre l, True):is, []), (i:(obtenerNombre l, False):is, []))
-sep l ([], []) = (([(obtenerNombre l, True)], []), ([(obtenerNombre l, False)], []))
-  
-sep l (i:is , c:cs) = ((i:((obtenerNombre l), True):is, c:cs), (i:((obtenerNombre l), False):is, c:cs))
+sep l (i, cs) =
+  ( (agregar (obtenerNombre l, True) i, cs)
+  , (agregar (obtenerNombre l, False) i, cs)
+  )
+  where
+    agregar par [] = [par]
+    agregar (x,b) ((y,c):ys)
+      | x == y = (x,b):ys
+      | otherwise = (y,c) : agregar (x,b) ys
 
 --IMPLEMENTACION PARTE 2
 
-
 --Ejercicio 1
 heuristicsLiteral :: [Clausula] -> Literal
-heuristicsLiteral = undefined
+heuristicsLiteral cs = fst (maxApariciones lista)
+  where
+    lista = contar (concat cs)
 
 --EJERCICIO 2
 dpll :: [Clausula] -> Interpretacion
-dpll = undefined
+dpll cs =
+  let (modelo, clausulasFinales) =
+        explorarArbolDPLL (construirArbolDPLL ([], cs))
+  in if clausulasFinales == []
+        then modelo
+        else []
 
 --EXTRA
 dpll2 :: Prop -> Interpretacion
-dpll2 = undefined
+dpll2 p = dpll (aClausulas (fnc p))
+
+distribuir :: Prop -> Prop
+distribuir (Or p (And q r)) = And (distribuir (Or p q)) (distribuir (Or p r))
+distribuir (Or (And q r) p) = And (distribuir (Or p q)) (distribuir (Or p r))
+distribuir (Or p q) = Or (distribuir p) (distribuir q)
+distribuir (And p q) = And (distribuir p) (distribuir q)
+distribuir  p = p
+
+fnn :: Prop -> Prop
+fnn (Var p) = Var p
+fnn (Cons b) = Cons b
+fnn (Not (Var p)) = Not (Var p)
+fnn (Not (Cons b)) = Cons (not b)
+fnn (Not (Not p)) = fnn p
+fnn (Not (And p q)) = Or (fnn (Not p)) (fnn (Not q))
+fnn (Not (Or p q)) = And (fnn (Not p)) (fnn (Not q))
+fnn (Not (Impl p q)) = fnn (Not (Or (Not p) q))
+fnn (Not (Syss p q)) = fnn (Not (And (Impl p q) (Impl q p)))
+fnn (And p q) = And (fnn p) (fnn q)
+fnn (Or p q) = Or (fnn p) (fnn q)
+fnn (Impl p q) = fnn (Or (Not p) q)
+fnn (Syss p q) = fnn (And (Impl p q) (Impl q p))
+
+fnc :: Prop -> Prop
+fnc p = distribuir (fnn p)
+
+aClausulas :: Prop -> [Clausula]
+aClausulas (And p q) = aClausulas p ++ aClausulas q
+aClausulas p = [aClausula p]
+
+aClausula :: Prop -> Clausula
+aClausula (Or p q) = aClausula p ++ aClausula q
+aClausula (Var x) = [Var x]
+aClausula (Not (Var x)) = [Not (Var x)]
+aClausula _ = []
 
 --Funciones auxiliares para la practica
 
@@ -125,9 +175,9 @@ esUnitaria [x] = True
 esUnitaria xs = False
 
 clausulaEnEstado :: Clausula -> Estado -> Bool
+clausulaEnEstado c (_, []) = False
 clausulaEnEstado c (inter, x:xs)
   | c == x = True
-  | [] == xs = False
   | otherwise = clausulaEnEstado c (inter, xs)
 
 obtenerNombre :: Literal -> String
@@ -145,8 +195,8 @@ obtenerLiteral [x] = x
 obtenerLiteral xs = Var "foo"
 
 darValor :: Clausula -> Interpretacion
-darValor [Var p] = [("p", True)]
-darValor [Not (Var p)] = [("p", False)]
+darValor [Var p] = [(p, True)]
+darValor [Not (Var p)] = [(p, False)]
 
 acumularClausula :: Estado -> Estado -> Estado
 acumularClausula (_ , xs) (l2 , ys) = (l2, xs ++ ys)
@@ -157,16 +207,16 @@ acumularModelo (m1, _) (m2, ys) = (m1 ++ m2, ys)
 segundoElemto :: (a , b) -> b
 segundoElemto (_ , b) = b
 
---construirArbolDPLL :: Estado -> ArbolDPLL
---construirArbolDPLL estado
---  | conflict estado = Node estado Void
---  | success estado = Nodo estado void
---  | segundoElemento propuesto /=  segundoElemento estado = Nodo estado (construirArbolDPLL propuesto)
---  otherwise = Branch estado (construirArbolDPLL izq) (construirArbolDPLL der)
---  where
---    propuesto = red (elim(unit estado))
---    literal = heuristicsLiteral (segundoElemento estado)
---    (izq, der) = sep literal estado 
+construirArbolDPLL :: Estado -> ArbolDPLL
+construirArbolDPLL estado
+  | conflict estado = Node estado Void
+  | success estado = Node estado Void
+  | segundoElemto propuesto /=  segundoElemto estado = Node estado (construirArbolDPLL propuesto)
+  | otherwise = Branch estado (construirArbolDPLL izq) (construirArbolDPLL der)
+  where
+    propuesto = red (elim(unit estado))
+    literal = heuristicsLiteral (segundoElemto estado)
+    (izq, der) = sep literal estado 
 
 explorarArbolDPLL :: ArbolDPLL -> Estado
 explorarArbolDPLL (Node estado Void) = estado
@@ -176,3 +226,23 @@ explorarArbolDPLL (Branch estado izq der) = if conflict x
                                                else x
                                             where
                                               x = explorarArbolDPLL izq
+
+-- Cuenta apariciones
+contar :: [Literal] -> [(Literal, Int)]
+contar [] = []
+contar (x:xs) = (x, 1 + contarLit x xs) : contar (filter (/= x) xs)
+
+contarLit :: Literal -> [Literal] -> Int
+contarLit _ [] = 0
+contarLit l (x:xs)
+  | l == x = 1 + contarLit l xs
+  | otherwise = contarLit l xs
+
+-- Obtener el máximo
+maxApariciones :: [(Literal, Int)] -> (Literal, Int)
+maxApariciones [x] = x
+maxApariciones (x:xs)
+  | snd x >= snd y = x
+  | otherwise = y
+  where
+    y = maxApariciones xs
