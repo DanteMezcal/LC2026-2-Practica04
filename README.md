@@ -22,12 +22,12 @@ Si no les llegan a funcionar, es posible que el problema es que tengan una versi
 
 En esta sección deben eliminar esta línea de texto, borrar la leyenda "Integrante n" y escribir su nombre empezando por apellidos y su número de cuenta.
 
-+ María Fernanda Ayala Montiel
++ Sánchez Pastrana Rafael
+    - No. de Cuenta: 322285930
++ Ayala Montiel María Fernanda
     - No. de Cuenta: 321309347
-+ Integrante 2
-    - No. de Cuenta: 
-+ Integrante 3
-    - No. de Cuenta: 
++ Carriche Arriaga Dante Raziel
+    - No. de Cuenta: 322037461
 
 ## Nota
 Esta práctica cuenta con un ejercicio extra, si deciden realizarlo hagan las modificaciones habituales. Si no lo realizan, déjenlo tal cual como está en esta asignación.
